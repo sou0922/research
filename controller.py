@@ -5,6 +5,11 @@ from model import Net
 from rl_agent import RLAgent
 import time
 import os
+from os.path import join, dirname
+from dotenv import load_dotenv
+
+dotenv_path = join(dirname(__file__), '.env')
+load_dotenv(dotenv_path)
 
 # クライアント情報（IPとポート）
 clients = {
