@@ -10,7 +10,7 @@ import os
 clients = {
     1: (os.getenv("IP1"), 5001),
     2: (os.getenv("IP2"), 5002),
-    3: (os.getenv("IP3"), 5003)
+    # 3: (os.getenv("IP3"), 5003)
 }
 
 controller_ip = os.getenv("IP1")
