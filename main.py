@@ -15,7 +15,7 @@ import json
 # 各実験値
 # ノードが8の場合
 NODE = 8
-DELAY_HOSTS = []
+DELAY_HOSTS = ["h5"]
 FLIP_HOSTS = ["h8"]
 NOISE_HOSTS = []
 
@@ -27,11 +27,11 @@ NOISE_HOSTS = []
 
 MAXHOPS = 200
 SEED = 42
-TIMEOUT = 2000
+TIMEOUT = 10
 NOISE_LEVEL = 100
-FLIP_RATE = 1.0 # 1.0で全て、0.2で20%だけflip
-LOGPATH = "/mnt/log.txt"
-PICNAME = "/mnt/graph.png"
+FLIP_RATE = 0.5 # 1.0で全て、0.2で20%だけflip
+LOGPATH = "results/result.txt"
+PICNAME = "/log/graph.png"
 
 def createNet(topology="default"):
     net = Mininet(link=TCLink)
@@ -104,6 +104,7 @@ def drawGraph(neighbors_dict, file_name=PICNAME):
 
 def distribute_cifar10(net):
     # CIFAR-10データセットを各ホストに分配（train/test分割）
+    os.makedirs("/data", exist_ok=True)
     transform = transforms.Compose([transforms.ToTensor()])
     cifar10_dataset = datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
     images, labels = cifar10_dataset.data, np.array(cifar10_dataset.targets)
@@ -140,8 +141,9 @@ def distribute_cifar10(net):
                 new_label = np.random.choice([l for l in range(10) if l != orig])
                 labels_train[idx] = new_label
 
-        np.savez(f"{host.name}_cifar10.npz", images_train=images_train, labels_train=labels_train, images_test=images_test, labels_test=labels_test)
-        host.cmd(f"cp {host.name}_cifar10.npz /tmp/{host.name}_cifar10.npz")
+        npz_path = f"/data/{host.name}_cifar10.npz"
+        np.savez(npz_path, images_train=images_train, labels_train=labels_train, images_test=images_test, labels_test=labels_test)
+        host.cmd(f"cp {npz_path} /tmp/{host.name}_cifar10.npz")
         print(f"{host.name} に {n_train}枚のtrain画像, {n-n_train}枚のtest画像を配布しました。")
 
 def resetLog(host_names):
@@ -149,6 +151,7 @@ def resetLog(host_names):
     ログファイルを初期化します。
     node_names: ["h1", "h2", ...] のようなノード名リスト
     """
+    os.makedirs("/log", exist_ok=True)
     with open(LOGPATH, "w") as f:
         for _ in range(3):
             f.write("0\n")
@@ -199,12 +202,12 @@ def main():
         # if host != start_host:
         if True:
             neighborsStr = ",".join([h.IP() for h in neighbors_dict[host.name]])
-            host.cmd(f"python3 -m node --mode listen --name {host.name} --ip {host.IP()} --neighborsStr {neighborsStr} --port 5000 --max_hops {MAXHOPS} > /tmp/{host.name}_node.log 2>&1 &")
+            host.cmd(f"python3 -m node --mode listen --name {host.name} --ip {host.IP()} --neighborsStr {neighborsStr} --port 5000 --max_hops {MAXHOPS} > /log/{host.name}_node.log 2>&1 &")
             print(f"{host.name} がポート5000で待機中...")
     
     # 開始ノードで学習を開始
     neighborsStr = ",".join([h.IP() for h in neighbors_dict[start_host.name]])
-    start_host.cmd(f"python3 -m node --mode create --name {start_host.name} --ip {start_host.IP()} --neighborsStr {neighborsStr} --port 5000 --max_hops {MAXHOPS} > /tmp/{start_host.name}_node.log 2>&1 &")
+    start_host.cmd(f"python3 -m node --mode create --name {start_host.name} --ip {start_host.IP()} --neighborsStr {neighborsStr} --port 5000 --max_hops {MAXHOPS} > /log/{start_host.name}_node.log 2>&1 &")
 
     # ホストの遷移回数をカウント
     waitStop(net, maxHops=MAXHOPS, timeOut=TIMEOUT)
@@ -212,11 +215,18 @@ def main():
     # ネットワークの形を保存
     drawGraph(neighbors_dict)
 
-    # --- ここからログファイルを集めて保存 ---
+    # --- ここからログファイル・データファイルを集めて保存 ---
+    host_log_dir = "./log"
+    host_data_dir = "./data"
+    os.makedirs(host_log_dir, exist_ok=True)
+    os.makedirs(host_data_dir, exist_ok=True)
     for host in hosts:
-        logPath = f"/tmp/{host.name}_node.log"
-        os.system(f"cp {logPath} ./{host.name}_node.log")
-        print(f"{host.name} のログを ./{host.name}_node.log に保存しました。")
+        logPath = f"/log/{host.name}_node.log"
+        npzPath = f"/data/{host.name}_cifar10.npz"
+        os.system(f"cp {logPath} {host_log_dir}/{host.name}_node.log")
+        os.system(f"cp {npzPath} {host_data_dir}/{host.name}_cifar10.npz")
+        print(f"{host.name} のログを {host_log_dir}/{host.name}_node.log に保存しました。")
+        print(f"{host.name} のデータを {host_data_dir}/{host.name}_cifar10.npz に保存しました。")
 
 if __name__ == '__main__':
     main()

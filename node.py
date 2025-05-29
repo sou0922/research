@@ -12,11 +12,9 @@ import traceback
 import fcntl
 import json
 
-LOGPATH = "/mnt/log.txt"
+LOGPATH = "/mnt/results/result.txt"
 gpu = 'cuda:3'
 device = gpu if torch.cuda.is_available() else "cpu"
-
-print(f"gpu: {device}", flush=True)
 
 class Node:
     def __init__(self, name, ip, neighborsStr, max_hops):
@@ -299,7 +297,7 @@ class Node:
 
     def get_log_line(self, n, logpath=LOGPATH):
         """
-        log.txtからn行目（1始まり）を抜き出して返す関数
+        result.txtからn行目（1始まり）を抜き出して返す関数
         """
         with open(logpath, "r") as f:
             lines = f.readlines()

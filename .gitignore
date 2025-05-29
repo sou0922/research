@@ -4,5 +4,6 @@
 *.txt
 .env
 /data
+/results
 /__pycache__
 *.png
